@@ -1,0 +1,11 @@
+SKU,Color,Finish,Description
+0001,Blue,Matte,Reference description must not overwrite target
+0002,Green,Satin,Reference description must not overwrite target
+0003,Blue,Matte,Reference description must not overwrite target
+0004,,Gloss,Reference description must not overwrite target
+0005,Black,Matte,Reference description must not overwrite target
+0006,Red,Gloss,Reference description must not overwrite target
+0007,Yellow,Matte,Reference description must not overwrite target
+0007,Green,Matte,Conflicting duplicate reference
+0008,Blue,Gloss,Reference description must not overwrite target
+0010,Black,Satin,Reference description must not overwrite target
