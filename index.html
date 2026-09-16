@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="audit-token" content="__AUDIT_TOKEN__">
+  <title>Catalog Audit · Local CSV comparison</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">LOCAL TOOL · FREE SOURCE MVP · AI-AUTHORED</p>
+    <h1>Compare catalogs.<br>Keep control of every change.</h1>
+    <p class="intro">Choose two CSVs, select the fields you trust, and download a proposed correction
+      plus a traceable audit. No accounts. No live-store access.</p>
+  </header>
+  <aside class="privacy"><strong>Your files stay on this computer.</strong>
+    Files transfer between this browser and the Python process on 127.0.0.1.
+    This app makes no external requests, stores no uploads, and has no analytics.
+    Downloads are saved by your browser only when you choose.</aside>
+  <section aria-labelledby="files-title">
+    <h2 id="files-title"><span>1</span> Choose your files</h2>
+    <p>UTF-8 comma-delimited CSV · up to 10 MiB each · up to 500 target rows</p>
+    <div class="file-grid">
+      <label>Target CSV <small>The catalog you want to check</small>
+        <input id="target" type="file" accept=".csv,text/csv"></label>
+      <label>Source CSV <small>Your reference — correctness is your responsibility</small>
+        <input id="source" type="file" accept=".csv,text/csv"></label>
+    </div>
+    <button id="inspect" type="button">Inspect columns</button>
+    <p id="metadata" class="muted"></p>
+  </section>
+  <section id="selection" hidden aria-labelledby="selection-title">
+    <h2 id="selection-title"><span>2</span> Define the comparison</h2>
+    <label for="key">Exact matching key</label>
+    <select id="key"></select>
+    <p>Only unique, exact key matches qualify. Leading zeros stay intact. No fuzzy matching.</p>
+    <fieldset><legend>Correction fields · select 1–5 (never the key)</legend>
+      <div id="fields" class="fields"></div>
+    </fieldset>
+    <button id="audit" type="button">Create proposed corrections</button>
+  </section>
+  <p id="status" role="status" aria-live="polite"></p>
+  <section id="results" hidden aria-labelledby="results-title">
+    <h2 id="results-title"><span>3</span> Review before using</h2>
+    <div id="counts" class="counts"></div>
+    <p id="preservation"></p>
+    <a id="download" class="button" download="catalog-audit.zip">Download results ZIP</a>
+    <p class="muted">corrected.csv · audit.json · changes.csv (machine-readable change list)</p>
+  </section>
+  <aside class="warning">
+    <strong>Proposed changes are not verified product facts or import-ready data.</strong>
+    <p>Check your source, units, and every proposed change. Blank or formula-like source values
+      are flagged instead of copied, but existing formula-like cells are retained.
+      Neither CSV output is sanitized for spreadsheets. Do not open untrusted CSV directly
+      in a spreadsheet; use a protected text-import workflow and review before any store import.</p>
+    <p>AI-authored software can contain errors. Keep backups. No hosting, support,
+      updates, accuracy guarantees, or checkout are offered by this MVP.</p>
+  </aside>
+  <footer>Repeatable local comparison · MIT licensed · Stop the Python process when finished.</footer>
+</main>
+</body>
+</html>

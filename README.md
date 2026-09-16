@@ -1,21 +1,102 @@
-# Conservative catalog CSV audit
+# Catalog Audit — local self-serve CSV comparison
 
-A small, AI-authored Python tool for comparing a product export with one
-authoritative supplier CSV. It proposes changes only to explicitly selected
-fields, using exact, unique SKU matches. No store API, fuzzy guessing, or
-automatic uploads.
+**Free source MVP · AI-authored · MIT licensed · Python 3.10+ standard library**
 
-The included ten-row example is **synthetic**, not customer work or evidence of
-sales. Its expected outcome is three cell corrections and three manual-review
-items; identifiers and descriptions remain unchanged.
+Compare a catalog export with a reference CSV, choose an exact matching key and
+up to five correction fields, then download proposed corrections and an audit.
+Repeat runs yourself: no agent, consultant, account, checkout or installation
+required. This is a repeatable software prototype, not a bespoke audit service.
+The payment model and demand for future paid convenience features are unvalidated.
+There is no paid exclusive license over this MIT code, and no hosting, updates
+or support commitment.
 
-## Run locally
+## Browser workflow
 
-Requires Python 3.10+ and its standard library; no installation or network access
-is needed by the tool. Keep source files private and use a new output directory.
+From this directory:
 
 ```bash
-python3 -m unittest -v test_audit
+python3 app.py
+```
+
+Open the **exact `http://127.0.0.1:PORT/` URL printed in your terminal**.
+The OS chooses an available port; optionally use `python3 app.py --port 8765`.
+The app binds only to `127.0.0.1`, never opens a browser automatically, and stops
+with Ctrl+C. Do not expose it through a proxy, tunnel or public server.
+
+1. Choose target and source CSV files, then **Inspect columns**.
+2. Review the row/column counts and common columns. Select the matching key
+   and **one to five distinct correction fields**. No correction fields are
+   selected for you.
+3. Choose **Create proposed corrections**. Review summary counts, then download
+   the ZIP and inspect its three files:
+   - `corrected.csv`: proposed values, original column order, unselected cell
+     values and key preserved.
+   - `audit.json`: every proposed change, reference record and manual-review
+     item, plus limitations.
+   - `changes.csv`: machine-readable projection of the report's changes, with
+     `target_record,key,source_record,field,before,after` columns.
+
+The included ten-row files are **synthetic**, not customer work or sales evidence.
+Select `synthetic-target.csv`, `synthetic-source.csv`, key `SKU`, fields `Color`
+and `Finish`: expect **3 proposed cell changes and 3 manual-review items**.
+Review items are not necessarily distinct rows; one row may have several items.
+
+## Privacy boundary
+
+The browser sends file contents as base64 JSON **over loopback HTTP to the local
+Python process**, once for inspection and again for comparison. This is a local
+transfer, not a cloud upload or a claim that data never leaves browser memory.
+Comparison uses the same Python engine as the CLI; JavaScript does not compare
+CSV cells. No dependencies, external network requests, analytics or live-store
+connections are used.
+
+The server does not save uploads or retain datasets between requests. Browser
+memory retains selected inputs/results until replaced or the page closes; the
+browser writes a ZIP only when you download it. OS swap, crash dumps, browser
+extensions, browser download history and other software are outside this app's
+control; this is not a secure-erasure guarantee.
+
+Requests require a random per-server token, the exact bound Host and same Origin.
+There is no CORS; assets are allowlisted, responses disable caching, and the CSP
+allows no remote assets. Body reads have size/time bounds. Request bodies, tokens
+and filenames are not logged. These protections do not defend against malicious
+software or other users who already control your computer. Close the page and
+stop the server after use.
+
+## Conservative behavior and important warnings
+
+- At most **500 target rows**, **5 distinct correction fields**, **10 MiB per
+  file**. Source rows have no separate count cap; the file-size limit applies.
+- UTF-8 (optional BOM), comma-delimited files with nonempty unique headers and
+  consistent record widths are required. Malformed input is rejected. Python's
+  CSV parser also imposes its default per-field size limit (normally 128 KiB).
+- Keys stay strings: `0001` is not `1`. No fuzzy matching, trimming, case folding,
+  unit conversions or inferred header mapping. Duplicate, blank, whitespace and
+  unmatched keys require manual review.
+- Blank or formula-like differing source values are flagged instead of copied.
+  The key and unselected cell values remain unchanged. CSV quoting, BOM and line
+  endings may change: this is cell-value preservation, not byte-for-byte copying.
+- **Source correctness is not independently verified.** This does not validate
+  product facts, units, metafield formats or any platform's import behavior.
+- **Neither CSV is sanitized or guaranteed safe for spreadsheets or live-store
+  import.** Existing formula-like cells remain in `corrected.csv`; before/after
+  values and keys can also appear in `changes.csv`. Never open untrusted CSV
+  directly in a spreadsheet. Use a protected text-import workflow, review all
+  proposals and a sample, and keep your own backups before considering import.
+- AI-authored software may contain errors. No accuracy or sales guarantees.
+  The app cannot access, back up or modify your store.
+
+This first increment has no installer, saved configurations, batch jobs, cloud
+hosting, authentication for multiple users or checkout. It is a single-user,
+single-request-at-a-time local app; a bounded slow request may briefly delay
+other requests. A modern browser with JavaScript and a Python runtime is required.
+
+## Existing CLI
+
+The original arguments remain compatible; `changes.csv` is an additive output.
+Use a new output directory (existing directories are not overwritten).
+
+```bash
 python3 audit.py \
   --target synthetic-target.csv \
   --source synthetic-source.csv \
@@ -23,52 +104,22 @@ python3 audit.py \
   --output example-output
 ```
 
-Outputs:
+## Tests and source distribution
 
-- `corrected.csv`: proposed values, with original column order and all
-  unselected cell values preserved.
-- `audit.json`: every proposed before/after change, reference record, ambiguous
-  match and other manual-review item.
+```bash
+python3 -m unittest -v test_audit test_app
+```
 
-The tool refuses more than 500 target rows, more than five agreed fields,
-missing/duplicate headers, inconsistent record widths, and inputs over 10 MiB.
-Keys stay text: `0001` is not coerced into `1`. Duplicate or unmatched keys are
-flagged. Blank or formula-like reference values are not automatically applied.
-It never changes the key field or executes spreadsheet formulas.
+Tests use synthetic data and an ephemeral loopback HTTP server that shuts down
+afterward; they need no internet or packages. HTTP tests cover parsing, selection,
+ZIP results, input bounds and request defenses. They do not replace a real
+browser interaction check.
 
-## Important limits
+A source distribution needs only this deterministic allowlist (sorted):
+`LICENSE`, `README.md`, `app.js`, `app.py`, `audit.py`, `index.html`, `style.css`,
+`synthetic-source.csv`, `synthetic-target.csv`, `test_app.py`, `test_audit.py`.
+Exclude caches, downloads, outputs, private datasets and workstation state.
+Nothing here is published automatically.
 
-This checks consistency against the supplied reference, **not whether that
-reference is factually correct**. It does not validate real-world specifications,
-units, metafield formats, Shopify import behavior, or SyncX configuration.
-
-UTF-8, comma-delimited files with matching header names are required. Agree on
-field mappings before use. CSV quoting, BOM and line endings may change;
-preservation refers to parsed cell values, not byte-for-byte formatting.
-
-Existing formula-like values in unselected fields are preserved and counted in
-the report. **Do not open untrusted CSV directly in a spreadsheet.** Import all
-columns as text in an appropriate protected environment. Always review the
-proposed changes and a small sample before any store import; keep your own
-backup. This program does not access, back up, or modify your store.
-
-Do not post customer datasets, store credentials, personal information, private
-supplier feeds or commercially sensitive files in this public repository.
-Use synthetic examples when reporting a bug.
-
-## Optional scoped assistance
-
-**Commercial disclosure:** Astra is AI-operated, under a human principal; it is
-not a human Shopify/SyncX consultant. The tool above is free.
-
-A **$49 one-off pilot audit** can be discussed for up to 500 nonpersonal product
-rows, one supplier reference, one SKU key and five agreed fields. Scope and a
-controlled ten-row sample must be accepted before any payment. This is a
-standalone file audit, not live-store work or part of a larger split transaction.
-No checkout is currently offered; availability and payment readiness must be
-confirmed first. No experience, sales or accuracy guarantees are implied.
-
-To express interest, open an issue with a **non-sensitive description only**:
-file format, approximate row count and the fields needing comparison. Do not
-upload files or contact details publicly. No unsolicited outreach or repeated
-promotion is performed through other projects.
+Do not submit customer datasets, credentials, personal information or private
+supplier feeds to public issues. Bug reports should use synthetic examples only.

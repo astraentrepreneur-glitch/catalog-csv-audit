@@ -3,6 +3,7 @@
 import argparse
 from collections import Counter, defaultdict
 import csv
+import io
 import json
 import os
 from pathlib import Path
@@ -12,11 +13,9 @@ MAX_FIELDS = 5
 MAX_FILE_BYTES = 10 * 1024 * 1024
 
 
-def load_csv(path):
-    path = Path(path)
-    if path.stat().st_size > MAX_FILE_BYTES:
-        raise ValueError("Input exceeds the 10 MiB pilot limit; review scope before proceeding.")
-    with path.open(encoding="utf-8-sig", newline="") as stream:
+def read_csv(stream, max_rows=None):
+    """Parse a text stream without coercing or normalizing any cell values."""
+    try:
         reader = csv.reader(stream, strict=True)
         try:
             headers = next(reader)
@@ -29,7 +28,43 @@ def load_csv(path):
             if len(values) != len(headers):
                 raise ValueError(f"Record {record} has an unexpected number of columns.")
             rows.append(dict(zip(headers, values)))
+            if max_rows is not None and len(rows) > max_rows:
+                raise ValueError(f"Target exceeds the {max_rows}-row limit.")
+    except (csv.Error, UnicodeError) as exc:
+        raise ValueError("Input must be valid UTF-8 and well-formed comma-delimited CSV.") from exc
     return headers, rows
+
+
+def load_csv_bytes(data, max_rows=None):
+    if len(data) > MAX_FILE_BYTES:
+        raise ValueError("Input exceeds the 10 MiB limit.")
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeError as exc:
+        raise ValueError("Input must be valid UTF-8.") from exc
+    return read_csv(io.StringIO(text, newline=""), max_rows=max_rows)
+
+
+def load_csv(path):
+    path = Path(path)
+    if path.stat().st_size > MAX_FILE_BYTES:
+        raise ValueError("Input exceeds the 10 MiB limit.")
+    with path.open(encoding="utf-8-sig", newline="") as stream:
+        return read_csv(stream)
+
+
+def csv_text(headers, rows):
+    stream = io.StringIO(newline="")
+    writer = csv.DictWriter(stream, fieldnames=headers, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    return stream.getvalue()
+
+
+def changes_csv(report):
+    """Project the engine's changes, without a second comparison implementation."""
+    return csv_text(["target_record", "key", "source_record", "field", "before", "after"],
+                    report["changes"])
 
 
 def formula_like(value):
@@ -38,13 +73,13 @@ def formula_like(value):
 
 def compare(target_headers, target, source_headers, source, key, fields):
     if not fields or len(fields) > MAX_FIELDS or len(fields) != len(set(fields)):
-        raise ValueError("Agree on one to five distinct fields.")
+        raise ValueError("Select one to five distinct correction fields.")
     if key in fields:
         raise ValueError("The matching key cannot be a correction field.")
     if any(name not in headers for headers in (target_headers, source_headers) for name in [key, *fields]):
         raise ValueError("Key and agreed fields must exist in both files; map names explicitly first.")
     if len(target) > MAX_TARGET_ROWS:
-        raise ValueError("Target exceeds the 500-row pilot scope.")
+        raise ValueError("Target exceeds the 500-row limit.")
     index = defaultdict(list)
     for record, row in enumerate(source, 2):
         index[row[key]].append((record, row))
@@ -118,6 +153,7 @@ def main():
         writer.writeheader()
         writer.writerows(corrected)
     (args.output / "audit.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+    (args.output / "changes.csv").write_text(changes_csv(report), encoding="utf-8", newline="")
     print(json.dumps({"rows": len(target), "changed_cells": len(report["changes"]),
                       "review_items": len(report["manual_review"]),
                       "unapproved_fields_preserved": report["unapproved_fields_preserved"]}))

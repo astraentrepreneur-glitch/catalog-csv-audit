@@ -1,9 +1,9 @@
 import csv
+import io
 from pathlib import Path
-import tempfile
 import unittest
 
-from audit import compare, load_csv
+from audit import compare, load_csv, load_csv_bytes
 
 
 class AuditTests(unittest.TestCase):
@@ -61,20 +61,21 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(report["manual_review"], [])
 
     def test_quoted_csv_unicode_multiline_and_invalid_shape(self):
-        with tempfile.TemporaryDirectory() as folder:
-            path = Path(folder) / "fixture.csv"
-            with path.open("w", encoding="utf-8", newline="") as stream:
-                writer = csv.writer(stream)
-                writer.writerow(self.headers)
-                writer.writerow(["0001", "blue, bright", "line one\nline two"])
-            headers, rows = load_csv(path)
-            self.assertEqual(headers, self.headers)
-            self.assertEqual(rows[0]["SKU"], "0001")
-            self.assertEqual(rows[0]["SEO"], "line one\nline two")
-            for text in ("SKU,Color,Color\n1,a,b\n", "SKU,Color\n1,a,extra\n", ""):
-                path.write_text(text)
-                with self.assertRaises(ValueError):
-                    load_csv(path)
+        stream = io.StringIO(newline="")
+        writer = csv.writer(stream)
+        writer.writerow(self.headers)
+        writer.writerow(["0001", "blue, bright", "line one\nline two"])
+        headers, rows = load_csv_bytes(stream.getvalue().encode())
+        self.assertEqual(headers, self.headers)
+        self.assertEqual(rows[0]["SKU"], "0001")
+        self.assertEqual(rows[0]["SEO"], "line one\nline two")
+        for text in ("SKU,Color,Color\n1,a,b\n", "SKU,Color\n1,a,extra\n", ""):
+            with self.assertRaises(ValueError):
+                load_csv_bytes(text.encode())
+
+    def test_path_and_bytes_readers_agree(self):
+        path = Path(__file__).with_name("synthetic-target.csv")
+        self.assertEqual(load_csv(path), load_csv_bytes(path.read_bytes()))
 
 
 if __name__ == "__main__":
