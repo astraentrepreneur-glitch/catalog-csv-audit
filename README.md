@@ -104,6 +104,70 @@ python3 audit.py \
   --output example-output
 ```
 
+## Worked example: review a recurring supplier update
+
+Use this workflow when two small files share an exact identifier and you want
+to inspect proposed price/stock changes **before deciding whether to import**.
+A store's native importer may already support identifier matching; this example
+is about an offline before/after report, not a missing native-import feature.
+The 500-target-row and matching-header limits still apply.
+
+The following fixtures are entirely **synthetic**. Their identifier strings
+are not validated GTINs, and the headers are not a platform import template.
+Use the current `main`
+[source ZIP](https://github.com/astraentrepreneur-glitch/catalog-csv-audit/archive/refs/heads/main.zip)
+or checkout for the included `examples/` directory. The older `v0.1.0-preview`
+ZIP does not include these fixtures; its unchanged engine can run them if
+downloaded separately from the links below. Save the raw CSVs, not GitHub's
+HTML previews, in an `examples/` directory beside the Python files.
+
+| File | Purpose |
+| --- | --- |
+| [supplier-target.csv](examples/supplier-target.csv) | Two merchant-like rows with internal ID, SKU, GTIN, price and stock |
+| [supplier-reference.csv](examples/supplier-reference.csv) | One supplier-like row with the same GTIN header and updated price/stock |
+
+In the browser workflow, select these files, key **GTIN**, and fields **Price**
+and **Stock**. Or, from the source directory, use a new output directory:
+
+```bash
+python3 audit.py \
+  --target examples/supplier-target.csv \
+  --source examples/supplier-reference.csv \
+  --key GTIN --field Price --field Stock \
+  --output supplier-example-output
+```
+
+Expected result: **2 proposed cell changes and 1 manual-review item**.
+For `SKU-A`, price changes from `12.00` to `12.50` and stock from `4` to `7`.
+`SKU-B` has no reference match and remains unchanged, with a review item.
+Both internal IDs, both SKUs and all leading zeros in GTIN strings stay intact.
+The output also contains `audit.json` and a two-change `changes.csv`.
+
+To see repeat-run behavior, compare the proposed output to the **same** reference:
+
+```bash
+python3 audit.py \
+  --target supplier-example-output/corrected.csv \
+  --source examples/supplier-reference.csv \
+  --key GTIN --field Price --field Stock \
+  --output supplier-repeat-output
+```
+
+Expect **0 further changes and still 1 review item**: the unmatched record has
+not been resolved. This does not demonstrate unattended synchronization.
+For a later real supplier update, choose the new reference and a fresh,
+reviewed target export yourself; there is no scheduler or live-store connection.
+Source accuracy, currency, tax, units, GTIN validity and import compatibility
+are not checked. Keep backups and review proposals; neither output CSV is
+guaranteed spreadsheet-safe or import-safe.
+
+Does this match a recurring workflow? A
+[public issue](https://github.com/astraentrepreneur-glitch/catalog-csv-audit/issues/new)
+can describe synthetic header names, approximate row count, update frequency and
+which repeated step would be worth paying to automate. Do not post customer
+data or private supplier files. This is voluntary product research, not a
+promise to build a feature or provide paid support.
+
 ## Tests and source distribution
 
 ```bash
@@ -116,7 +180,9 @@ ZIP results, input bounds and request defenses. They do not replace a real
 browser interaction check.
 
 A source distribution needs only this deterministic allowlist (sorted):
-`LICENSE`, `README.md`, `app.js`, `app.py`, `audit.py`, `index.html`, `style.css`,
+`LICENSE`, `README.md`, `app.js`, `app.py`, `audit.py`,
+`examples/supplier-reference.csv`, `examples/supplier-target.csv`,
+`index.html`, `style.css`,
 `synthetic-source.csv`, `synthetic-target.csv`, `test_app.py`, `test_audit.py`.
 Exclude caches, downloads, outputs, private datasets and workstation state.
 Nothing here is published automatically.
